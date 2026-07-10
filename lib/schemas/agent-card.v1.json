@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bnagent.nl/schemas/agent-card/v1.json",
+  "title": "BN Agent — Agent Card Standaard v1.0",
+  "description": "Canonieke Agent Card: A2A v1.0-compatibele kern plus het bna-extensieblok met certificering, menselijk toezicht en het riskScoring-blok uit Handboek Boek VIII (Art. 8.30).",
+  "type": "object",
+  "required": ["protocolVersion", "name", "description", "version", "provider", "bna"],
+  "additionalProperties": false,
+  "properties": {
+    "protocolVersion": { "const": "1.0" },
+    "name": { "type": "string", "minLength": 3, "maxLength": 120 },
+    "description": { "type": "string", "minLength": 10, "maxLength": 2000 },
+    "url": { "type": "string", "format": "uri", "description": "Aanroep-endpoint van de agent (verplicht bij lease-distributie)" },
+    "preferredTransport": { "type": "string", "enum": ["JSONRPC", "GRPC", "HTTP+JSON"], "default": "JSONRPC" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "documentationUrl": { "type": "string", "format": "uri" },
+    "iconUrl": { "type": "string", "format": "uri" },
+    "provider": {
+      "type": "object",
+      "required": ["organization"],
+      "additionalProperties": false,
+      "properties": {
+        "organization": { "type": "string", "minLength": 2 },
+        "url": { "type": "string", "format": "uri" },
+        "country": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "kvkNumber": { "type": "string" }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "description": "A2A-capabilitiesblok (transportkenmerken)",
+      "additionalProperties": false,
+      "properties": {
+        "streaming": { "type": "boolean", "default": false },
+        "pushNotifications": { "type": "boolean", "default": false },
+        "stateTransitionHistory": { "type": "boolean", "default": false }
+      }
+    },
+    "defaultInputModes": { "type": "array", "items": { "type": "string" } },
+    "defaultOutputModes": { "type": "array", "items": { "type": "string" } },
+    "skills": {
+      "type": "array",
+      "description": "A2A-skills; spiegelt bna.capabilities op A2A-niveau",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "examples": { "type": "array", "items": { "type": "string" } },
+          "inputModes": { "type": "array", "items": { "type": "string" } },
+          "outputModes": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "securitySchemes": { "type": "object" },
+    "security": { "type": "array", "items": { "type": "object" } },
+    "signatures": {
+      "type": "array",
+      "description": "A2A AgentCardSignature-structuren (JWS)",
+      "items": {
+        "type": "object",
+        "required": ["protected", "signature"],
+        "properties": {
+          "protected": { "type": "string" },
+          "signature": { "type": "string" },
+          "header": { "type": "object" }
+        }
+      }
+    },
+    "bna": {
+      "type": "object",
+      "description": "BN Agent-extensie: registry-identiteit, certificering, toezicht en risicoscoring",
+      "required": [
+        "schemaVersion",
+        "slug",
+        "distributionModel",
+        "sector",
+        "capabilities",
+        "certification",
+        "escrowSupported",
+        "humanOversightMeasures"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": "1.0" },
+        "agentId": { "type": "string", "format": "uuid", "description": "Door de registry toegekend; niet door de vendor te zetten" },
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 80 },
+        "registryUrl": { "type": "string", "format": "uri" },
+        "distributionModel": { "type": "string", "enum": ["koop", "lease"] },
+        "sector": { "type": "string", "description": "Sectorcode uit de registry (bijv. financial_services); uitbreidbaar zonder schemawijziging" },
+        "wellKnownUrl": { "type": "string", "format": "uri", "description": "Verplichte /.well-known/agent.json-locatie bij lease-distributie" },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["category", "name", "dataSensitivity", "autonomyLevel"],
+            "additionalProperties": false,
+            "properties": {
+              "category": { "type": "string", "description": "Categoriecode uit de registry (Bijlage A)" },
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "dataCategories": { "type": "array", "items": { "type": "string" }, "description": "AVG-datacategorieën die deze capability verwerkt" },
+              "dataSensitivity": { "type": "string", "enum": ["none", "personal", "special_or_biometric"] },
+              "autonomyLevel": { "type": "string", "enum": ["advisory", "autonomous_reversible", "autonomous_irreversible"] }
+            }
+          }
+        },
+        "certification": {
+          "type": "object",
+          "required": ["status", "euAiAct"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "certified", "expired", "revoked", "suspended"] },
+            "certifiedBy": { "type": "string", "enum": ["bn_agent", "notified_body"] },
+            "notifiedBodyName": { "type": ["string", "null"] },
+            "euAiAct": {
+              "type": "object",
+              "required": ["riskClass"],
+              "additionalProperties": false,
+              "properties": {
+                "riskClass": { "type": "string", "enum": ["minimal", "limited", "high", "unacceptable"] },
+                "annexIiiCategory": { "type": ["string", "null"] }
+              }
+            },
+            "avgChecklist": {
+              "type": "object",
+              "description": "AVG 7-puntstoetsing (Boek IV Titel 3)",
+              "properties": {
+                "grondslag": { "type": "boolean" },
+                "doelbinding": { "type": "boolean" },
+                "dataminimalisatie": { "type": "boolean" },
+                "bewaartermijn": { "type": "boolean" },
+                "beveiliging": { "type": "boolean" },
+                "rechten_betrokkenen": { "type": "boolean" },
+                "verwerkersovereenkomst": { "type": "boolean" }
+              },
+              "additionalProperties": false
+            },
+            "issuedAt": { "type": ["string", "null"], "format": "date-time" },
+            "expiresAt": { "type": ["string", "null"], "format": "date-time" }
+          }
+        },
+        "escrowSupported": { "type": "boolean" },
+        "slaUptimePercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "humanOversightMeasures": {
+          "type": "array",
+          "description": "Verplichte human-in-the-loop-momenten; elk gekoppeld aan een Handboek-artikelnummer (Boek V)",
+          "items": {
+            "type": "object",
+            "required": ["article", "measure"],
+            "additionalProperties": false,
+            "properties": {
+              "article": {
+                "type": "string",
+                "pattern": "^Art\\. [1-9][0-9]?\\.[1-9][0-9]?( lid [1-9][0-9]?)?$",
+                "description": "Artikelverwijzing in vaste vorm, bijv. 'Art. 5.3 lid 2' — vrije tekst is niet toegestaan"
+              },
+              "measure": { "type": "string", "minLength": 5 },
+              "trigger": { "type": "string" }
+            }
+          }
+        },
+        "riskScoring": {
+          "type": "object",
+          "description": "Boek VIII Art. 8.30 — uitsluitend door BN Agent berekend en gezet; door de vendor aangeleverde waarden worden genegeerd",
+          "required": [
+            "riskFactorScore",
+            "riskFactorClass",
+            "riskFactorComponents",
+            "trustScore",
+            "trustScoreLastCalculated",
+            "inhuurTier",
+            "applicableArticles",
+            "requiredConsentLevel",
+            "suspended"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "riskFactorScore": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "riskFactorClass": { "type": "string", "enum": ["laag", "midden", "hoog"] },
+            "riskFactorComponents": {
+              "type": "object",
+              "required": ["sector", "euAiActClass", "capabilityCategory", "dataSensitivity", "autonomyLevel"],
+              "additionalProperties": false,
+              "properties": {
+                "sector": { "type": "integer", "minimum": 0, "maximum": 25 },
+                "euAiActClass": { "type": "integer", "minimum": 0, "maximum": 30 },
+                "capabilityCategory": { "type": "integer", "minimum": 0, "maximum": 20 },
+                "dataSensitivity": { "type": "integer", "minimum": 0, "maximum": 15 },
+                "autonomyLevel": { "type": "integer", "minimum": 0, "maximum": 10 }
+              }
+            },
+            "trustScore": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "trustScoreLastCalculated": { "type": "string", "format": "date-time" },
+            "inhuurTier": { "type": "string", "enum": ["A", "B", "C", "D"] },
+            "applicableArticles": {
+              "type": "array",
+              "items": { "type": "string", "pattern": "^Art\\. [1-9][0-9]?\\.[1-9][0-9]?( lid [1-9][0-9]?)?$" }
+            },
+            "requiredConsentLevel": { "type": "string", "enum": ["geen", "eenmalig", "drempelgebonden", "per_transactie"] },
+            "suspended": { "type": "boolean" },
+            "suspensionReason": { "type": ["string", "null"] }
+          }
+        },
+        "cardHash": { "type": "string", "pattern": "^[a-f0-9]{64}$", "description": "sha256 over de canonieke card zonder signatures/cardHash zelf" }
+      }
+    }
+  }
+}
