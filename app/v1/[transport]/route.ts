@@ -129,12 +129,13 @@ const handler = createMcpHandler(
 
     server.tool(
       "submit_escrow_request",
-      "Dien een escrow-verzoek in (metadata; payloadverwerking staat achter de feature flag ESCROW_LIVE_PROCESSING). Tier-gating conform Handboek Boek VIII Titel 5/6. Vereist authenticatie met scope escrow:submit.",
+      "Dien een escrow-verzoek in. Binnen het dynamisch mandaat (Boek VIII Titel 11) wordt direct autonoom uitgevoerd; erboven volgt asynchrone menselijke validatie (Art. 8.33). Payloadverwerking staat achter de feature flag ESCROW_LIVE_PROCESSING. Vereist authenticatie met scope escrow:submit.",
       {
         agentId: z.string().uuid(),
         requestMeta: z.record(z.string(), z.unknown()).optional(),
         approvalId: z.string().uuid().optional(),
-        aboveThreshold: z.boolean().optional(),
+        amountCents: z.number().int().min(0).optional().describe("Transactiebedrag in centen, voor de mandaatmeting"),
+        payloadBytes: z.number().int().min(0).optional().describe("Omvang van de gevoelige payload in bytes"),
       },
       async (args, extra) => {
         const caller = callerFrom(extra.authInfo);
@@ -148,7 +149,8 @@ const handler = createMcpHandler(
                 agentId: args.agentId,
                 requestMeta: args.requestMeta ?? {},
                 approvalId: args.approvalId,
-                aboveThreshold: args.aboveThreshold,
+                amountCents: args.amountCents,
+                payloadBytes: args.payloadBytes,
               },
               caller,
             ),
