@@ -14,6 +14,12 @@ create table if not exists public.bna_budget_state (
   updated_at timestamptz not null default now()
 );
 
+-- Zelfde regel als 0001 (default deny): dit is realtime financiële/data-
+-- mandaatstaat, minstens zo gevoelig als bna_escrow_transactions. Geen
+-- policies voor anon/authenticated = alleen service role (server/budget.ts
+-- gebruikt uitsluitend supabaseService(), die RLS altijd omzeilt).
+alter table public.bna_budget_state enable row level security;
+
 alter table public.bna_escrow_transactions
   add column if not exists amount_cents bigint not null default 0,
   add column if not exists payload_bytes bigint not null default 0,
