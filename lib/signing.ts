@@ -12,7 +12,16 @@ export const SIGNING_KID = "bna-registry-2026-07";
 
 function pem(env: string | undefined, name: string): string {
   if (!env) throw new Error(`${name} ontbreekt in de omgeving`);
-  return env.replace(/\\n/g, "\n");
+  // Env managers (Vercel, .env files) frequently mangle multi-line PEM keys:
+  // literal "\n" escapes, newlines collapsed to spaces, or surrounding quotes.
+  // Normalize to a canonical PEM so the key loads regardless of paste format.
+  const normalized = env.trim().replace(/^["']|["']$/g, "").replace(/\\n/g, "\n");
+  const m = normalized.match(/-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END [A-Z0-9 ]+-----/);
+  if (!m) return normalized;
+  const label = m[1].trim();
+  const body = m[2].replace(/\s+/g, "");
+  const wrapped = body.match(/.{1,64}/g)?.join("\n") ?? body;
+  return `-----BEGIN ${label}-----\n${wrapped}\n-----END ${label}-----\n`;
 }
 
 async function privateKey() {
