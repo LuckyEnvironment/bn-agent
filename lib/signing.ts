@@ -13,13 +13,14 @@ export const SIGNING_KID = "bna-registry-2026-07";
 function pem(env: string | undefined, name: string): string {
   if (!env) throw new Error(`${name} ontbreekt in de omgeving`);
   // Env managers (Vercel, .env files) frequently mangle multi-line PEM keys:
-  // literal "\n" escapes, newlines collapsed to spaces, or surrounding quotes.
-  // Normalize to a canonical PEM so the key loads regardless of paste format.
-  const normalized = env.trim().replace(/^["']|["']$/g, "").replace(/\\n/g, "\n");
-  const m = normalized.match(/-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END [A-Z0-9 ]+-----/);
-  if (!m) return normalized;
-  const label = m[1].trim();
-  const body = m[2].replace(/\s+/g, "");
+  // literal "\n" escapes, newlines collapsed to spaces, surrounding quotes, or
+  // even the -----BEGIN/END----- lines dropped entirely (leaving just the
+  // base64 body). Normalize any of these to a canonical PEM. The key type is
+  // derived from the env var name so a bare base64 body can be re-wrapped.
+  const s = env.trim().replace(/^["']|["']$/g, "").replace(/\\n/g, "\n").trim();
+  const label = /PRIVATE/i.test(name) ? "PRIVATE KEY" : "PUBLIC KEY";
+  const m = s.match(/-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END [A-Z0-9 ]+-----/);
+  const body = (m ? m[2] : s).replace(/\s+/g, "");
   const wrapped = body.match(/.{1,64}/g)?.join("\n") ?? body;
   return `-----BEGIN ${label}-----\n${wrapped}\n-----END ${label}-----\n`;
 }
