@@ -74,3 +74,29 @@ Smoke: `GET /v1/registry/agents`, `GET /v1/registry/agents/{slug}/verify`
 (attestatie onafhankelijk verifieerbaar tegen `/.well-known/jwks.json`),
 MCP: `POST /v1/mcp` (tools: find_agents, get_agent_card, verify_agent,
 list_capabilities, call_lease_agent, submit_escrow_request).
+
+## Deployment (productie)
+
+Beide apps draaien op Vercel en deployen automatisch vanaf GitHub:
+
+| App | Repo | Live URL |
+| --- | --- | --- |
+| Platform / API | `LuckyEnvironment/bn-agent` | https://bn-agent.vercel.app |
+| Console / site | `LuckyEnvironment/bn-agent-console` | https://bn-agent-console.vercel.app |
+
+- **Auto-deploy.** Elke push naar `main` bouwt en publiceert automatisch
+  (git-connected). De repo staat **public**: op het Vercel Hobby-plan worden
+  git-deploys van privé-repos geblokkeerd (collaboratie is Pro-only) — public
+  (of upgraden naar Pro) heft dit op.
+- **Env vars** (Vercel → Settings → Environment Variables, scope *Production*):
+  `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+  `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_BASE_URL` (= de live-URL, **zonder**
+  trailing slash), `BNA_SIGNING_PRIVATE_KEY` / `BNA_SIGNING_PUBLIC_KEY`,
+  `ESCROW_LIVE_PROCESSING=false`. `NEXT_PUBLIC_*` worden bij de build ingebakken —
+  na wijziging een **redeploy** nodig (Deployments → nieuwste → ⋯ → Redeploy).
+- **Signing-sleutels tolerant.** `lib/signing.ts::pem()` normaliseert elk
+  plakformaat (volledige PEM, `\n`-escaped, of enkel de base64-body zonder
+  `-----BEGIN/END-----`) naar een geldige Ed25519-sleutel; het sleuteltype wordt
+  uit de env-varnaam afgeleid.
+- **Smoke na deploy.** `/.well-known/jwks.json` (publieke sleutel) en
+  `/v1/registry/agents/{slug}/verify` (ondertekende attestatie) moeten `200` geven.
