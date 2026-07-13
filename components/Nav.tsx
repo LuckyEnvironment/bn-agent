@@ -10,6 +10,7 @@ export function Nav() {
         <div className="navlinks">
           <Link href="/registry">Registry</Link>
           <Link href="/connectors">Connectors</Link>
+          <Link href="/audit">Audittrail</Link>
           <Link href="/handboek">Handboek</Link>
           <Link href="/#werkt">Hoe het werkt</Link>
           <Link href="/#vertrouwen">Certificering</Link>
